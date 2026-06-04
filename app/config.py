@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     admin_email: str = "admin@vfiveeducation.com"
     secret_key: str = "vfive-dev-secret-change-in-production"
     cors_origins: str = "http://localhost:3000"
+    # Allow any *.vercel.app preview/production URL (set empty to disable)
+    cors_origin_regex: str = r"https://.*\.vercel\.app"
     database_url: str = "postgresql+psycopg://vfive:vfive@localhost:5432/vfive"
     legacy_data_file: str = "data/cms_store.json"
 
@@ -21,6 +23,11 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def cors_origin_regex_pattern(self) -> str | None:
+        pattern = self.cors_origin_regex.strip()
+        return pattern or None
 
     @property
     def cloudinary_configured(self) -> bool:
