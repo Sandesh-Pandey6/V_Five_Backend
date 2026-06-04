@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_admin_user
@@ -41,3 +41,16 @@ def list_inquiries(
         )
         for r in rows
     ]
+
+
+@router.delete("/{inquiry_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_inquiry(
+    inquiry_id: int,
+    db: Session = Depends(get_db),
+    _: AdminUser = Depends(get_current_admin_user),
+) -> None:
+    row = db.query(Inquiry).filter(Inquiry.id == inquiry_id).first()
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inquiry not found")
+    db.delete(row)
+    db.commit()

@@ -208,6 +208,12 @@ class AdminUserCreate(BaseModel):
     name: str = ""
 
 
+class AdminUserUpdate(BaseModel):
+    email: str
+    name: str = ""
+    password: str | None = None
+
+
 class AdminMeResponse(BaseModel):
     id: int
     email: str

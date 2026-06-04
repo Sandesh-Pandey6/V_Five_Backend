@@ -6,7 +6,7 @@ from app.auth import get_current_admin_user
 from app.db.deps import get_db
 from app.db.models import AdminUser, ROLE_SUPERADMIN, ROLE_USER
 from app.passwords import hash_password
-from app.schemas import AdminUserCreate, AdminUserResponse
+from app.schemas import AdminUserCreate, AdminUserResponse, AdminUserUpdate
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 
@@ -52,6 +52,45 @@ def create_user(
         role=ROLE_USER,
     )
     db.add(row)
+    try:
+        db.commit()
+        db.refresh(row)
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A user with this email already exists",
+        ) from exc
+
+    return _to_response(row)
+
+
+@router.put("/{user_id}", response_model=AdminUserResponse)
+def update_user(
+    user_id: int,
+    body: AdminUserUpdate,
+    db: Session = Depends(get_db),
+    _: AdminUser = Depends(get_current_admin_user),
+) -> AdminUserResponse:
+    email = body.email.strip().lower()
+    if not email or "@" not in email:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid email address")
+
+    row = db.query(AdminUser).filter(AdminUser.id == user_id).first()
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    if body.password is not None and body.password != "":
+        if len(body.password) < 6:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password must be at least 6 characters",
+            )
+        row.password_hash = hash_password(body.password)
+
+    row.email = email
+    row.name = body.name.strip()
+
     try:
         db.commit()
         db.refresh(row)
